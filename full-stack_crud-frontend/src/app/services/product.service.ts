@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { ProductRequest } from '../contracts/product-request';
@@ -9,8 +9,15 @@ export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:5135/api/products';
 
-  getAll() {
-    return this.http.get<Product[]>(this.apiUrl);
+  getAll(search: string, sortBy = 'createdAtUtc', sortDirection: 'asc' | 'desc' = 'desc') {
+    let params = new HttpParams().set('sortBy', sortBy).set('sortDirection', sortDirection);
+    const normalizedSearch = search.trim();
+
+    if (normalizedSearch) {
+      params = params.set('search', normalizedSearch);
+    }
+
+    return this.http.get<Product[]>(this.apiUrl, { params });
   }
 
   getById(id: number) {

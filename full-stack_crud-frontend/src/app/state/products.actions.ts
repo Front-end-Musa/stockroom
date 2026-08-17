@@ -6,7 +6,7 @@ import { Product } from '../models/product';
 export const ProductActions = createActionGroup({
   source: 'Products',
   events: {
-    'Load Products': emptyProps(),
+    'Load Products': props<{ search: string }>(),
     'Load Products Success': props<{ products: Product[] }>(),
     'Load Products Failure': props<{ error: string }>(),
     'Create Product': props<{ product: ProductRequest }>(),

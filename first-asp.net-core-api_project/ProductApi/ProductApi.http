@@ -6,6 +6,12 @@ Accept: application/json
 
 ###
 
+### Search and sort products
+GET {{ProductApi_HostAddress}}/api/products?search=keyboard&sortBy=price&sortDirection=asc
+Accept: application/json
+
+###
+
 ### Get one product
 GET {{ProductApi_HostAddress}}/api/products/1
 Accept: application/json

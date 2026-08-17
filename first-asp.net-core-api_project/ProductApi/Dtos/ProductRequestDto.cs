@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ProductApi.Contracts;
+namespace ProductApi.Dtos;
 
-public sealed class ProductRequest
+public sealed class ProductRequestDto
 {
     [Required]
     [StringLength(100, MinimumLength = 2)]
@@ -17,3 +17,4 @@ public sealed class ProductRequest
     [Range(0, int.MaxValue)]
     public int Stock { get; set; }
 }
+

@@ -1,8 +1,8 @@
 # Stockroom product manager
 
 An Angular frontend for the ASP.NET Core Product API. It provides a responsive product catalog,
-inventory metrics, search, validation, and complete create, update, and delete workflows through
-NgRx Store and Effects.
+inventory metrics, server-side search and sorting, validation, and complete create, update, and
+delete workflows through NgRx Store and Effects.
 
 ## Project structure
 

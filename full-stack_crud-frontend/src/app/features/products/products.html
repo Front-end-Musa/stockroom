@@ -125,7 +125,7 @@
                 type="search"
                 placeholder="Search products"
                 [value]="search()"
-                (input)="search.set(searchInput.value)"
+                (input)="searchProducts(searchInput.value)"
               />
             </label>
 
@@ -149,7 +149,7 @@
               <div class="loading-row"><i></i><span></span><span></span><span></span></div>
             }
           </div>
-        } @else if (filteredProducts().length > 0) {
+        } @else if (products().length > 0) {
           <div class="product-table">
             <div class="table-head" aria-hidden="true">
               <span>Product</span>
@@ -160,7 +160,7 @@
             </div>
 
             <div class="table-body">
-              @for (product of filteredProducts(); track product.id) {
+              @for (product of products(); track product.id) {
                 <article class="product-row">
                   <div class="product-identity">
                     <span class="product-avatar" aria-hidden="true">{{
@@ -241,7 +241,7 @@
         }
 
         <footer class="catalog-footer">
-          Showing {{ filteredProducts().length }} of {{ products().length }} products
+          Showing {{ products().length }} {{ search() ? 'matching ' : '' }}products
         </footer>
       </section>
 

@@ -1,7 +1,7 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, Signal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 
@@ -27,79 +27,85 @@ import {
   styleUrl: './products.scss',
 })
 export class Products implements OnInit {
-  private readonly actions$ = inject(Actions);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly formBuilder = inject(FormBuilder);
-  private readonly store = inject(Store);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly products = this.store.selectSignal(selectProducts);
-  protected readonly loading = this.store.selectSignal(selectProductsLoading);
-  protected readonly apiConnected = this.store.selectSignal(selectApiConnected);
-  protected readonly saving = this.store.selectSignal(selectProductSaving);
-  protected readonly deletingId = this.store.selectSignal(selectDeletingProductId);
-  protected readonly error = this.store.selectSignal(selectProductsError);
-  protected readonly unitsInStock = this.store.selectSignal(selectUnitsInStock);
-  protected readonly lowStockCount = this.store.selectSignal(selectLowStockCount);
-  protected readonly inventoryValue = this.store.selectSignal(selectInventoryValue);
+  protected readonly products: Signal<Product[]>;
+  protected readonly loading: Signal<boolean>;
+  protected readonly apiConnected: Signal<boolean | null>;
+  protected readonly saving: Signal<boolean>;
+  protected readonly deletingId: Signal<number | null>;
+  protected readonly error: Signal<string | null>;
+  protected readonly unitsInStock: Signal<number>;
+  protected readonly lowStockCount: Signal<number>;
+  protected readonly inventoryValue: Signal<number>;
 
   protected readonly search = signal('');
   protected readonly editingProduct = signal<Product | null>(null);
   protected readonly productToDelete = signal<Product | null>(null);
   protected readonly toast = signal<string | null>(null);
 
-  protected readonly filteredProducts = computed(() => {
-    const query = this.search().trim().toLowerCase();
+  protected readonly productForm: FormGroup<{
+    name: FormControl<string>;
+    description: FormControl<string>;
+    price: FormControl<number>;
+    stock: FormControl<number>;
+  }>;
 
-    if (!query) {
-      return this.products();
-    }
-
-    return this.products().filter(
-      (product) =>
-        product.name.toLowerCase().includes(query) ||
-        product.description?.toLowerCase().includes(query),
-    );
-  });
-
-  protected readonly productForm = this.formBuilder.nonNullable.group({
-    name: [
-      '',
-      [
-        Validators.required,
-        Validators.minLength(2),
-        Validators.maxLength(100),
-        Validators.pattern(/.*\S.*/),
+  constructor(
+    private readonly store: Store,
+    actions$: Actions,
+    destroyRef: DestroyRef,
+    formBuilder: FormBuilder,
+  ) {
+    this.products = store.selectSignal(selectProducts);
+    this.loading = store.selectSignal(selectProductsLoading);
+    this.apiConnected = store.selectSignal(selectApiConnected);
+    this.saving = store.selectSignal(selectProductSaving);
+    this.deletingId = store.selectSignal(selectDeletingProductId);
+    this.error = store.selectSignal(selectProductsError);
+    this.unitsInStock = store.selectSignal(selectUnitsInStock);
+    this.lowStockCount = store.selectSignal(selectLowStockCount);
+    this.inventoryValue = store.selectSignal(selectInventoryValue);
+    this.productForm = formBuilder.nonNullable.group({
+      name: [
+        '',
+        [
+          Validators.required,
+          Validators.minLength(2),
+          Validators.maxLength(100),
+          Validators.pattern(/.*\S.*/),
+        ],
       ],
-    ],
-    description: ['', Validators.maxLength(500)],
-    price: [0, [Validators.required, Validators.min(0.01), Validators.max(99999999.99)]],
-    stock: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]],
-  });
+      description: ['', Validators.maxLength(500)],
+      price: [0, [Validators.required, Validators.min(0.01), Validators.max(99999999.99)]],
+      stock: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]],
+    });
 
-  constructor() {
-    this.actions$
-      .pipe(ofType(ProductActions.createProductSuccess), takeUntilDestroyed())
+    actions$
+      .pipe(ofType(ProductActions.createProductSuccess), takeUntilDestroyed(destroyRef))
       .subscribe(({ product }) => {
         this.resetForm();
         this.showToast(`${product.name} was added to the catalog.`);
+        this.loadProducts();
       });
 
-    this.actions$
-      .pipe(ofType(ProductActions.updateProductSuccess), takeUntilDestroyed())
+    actions$
+      .pipe(ofType(ProductActions.updateProductSuccess), takeUntilDestroyed(destroyRef))
       .subscribe(({ product }) => {
         this.resetForm();
         this.showToast(`${product.name} was updated.`);
+        this.loadProducts();
       });
 
-    this.actions$
-      .pipe(ofType(ProductActions.deleteProductSuccess), takeUntilDestroyed())
+    actions$
+      .pipe(ofType(ProductActions.deleteProductSuccess), takeUntilDestroyed(destroyRef))
       .subscribe(() => {
         this.productToDelete.set(null);
         this.showToast('Product removed from the catalog.');
+        this.loadProducts();
       });
 
-    this.destroyRef.onDestroy(() => {
+    destroyRef.onDestroy(() => {
       if (this.toastTimer) {
         clearTimeout(this.toastTimer);
       }
@@ -107,7 +113,7 @@ export class Products implements OnInit {
   }
 
   ngOnInit() {
-    this.store.dispatch(ProductActions.loadProducts());
+    this.loadProducts();
   }
 
   protected startCreating(formPanel: HTMLElement) {
@@ -175,15 +181,21 @@ export class Products implements OnInit {
   }
 
   protected retry() {
-    this.store.dispatch(ProductActions.loadProducts());
+    this.loadProducts();
   }
 
   protected dismissError() {
     this.store.dispatch(ProductActions.dismissError());
   }
 
+  protected searchProducts(value: string) {
+    this.search.set(value);
+    this.loadProducts();
+  }
+
   protected clearSearch() {
     this.search.set('');
+    this.loadProducts();
   }
 
   protected productInitial(product: Product) {
@@ -197,5 +209,9 @@ export class Products implements OnInit {
 
     this.toast.set(message);
     this.toastTimer = setTimeout(() => this.toast.set(null), 3500);
+  }
+
+  private loadProducts() {
+    this.store.dispatch(ProductActions.loadProducts({ search: this.search() }));
   }
 }

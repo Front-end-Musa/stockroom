@@ -16,7 +16,7 @@ This repository currently contains the backend API for a simple product manager.
 
 ```text
 ProductApi/
-  Contracts/ProductRequest.cs        Request body and validation rules
+  Dtos/ProductRequestDto.cs           Request body and validation rules
   Controllers/ProductsController.cs  HTTP endpoints
   Data/AppDbContext.cs                Database configuration
   Data/Migrations/                    Generated PostgreSQL schema history
@@ -86,7 +86,7 @@ Open `http://localhost:5135/scalar/v1` to try every endpoint in the browser.
 
 | Method | URL | Purpose | Successful status |
 | --- | --- | --- | --- |
-| `GET` | `/api/products` | List products | `200` |
+| `GET` | `/api/products` | List, filter, and sort products | `200` |
 | `GET` | `/api/products/{id}` | Get one product | `200` |
 | `POST` | `/api/products` | Create a product | `201` |
 | `PUT` | `/api/products/{id}` | Replace editable values | `204` |
@@ -101,6 +101,13 @@ POST and PUT use this JSON shape:
   "price": 89.99,
   "stock": 12
 }
+```
+
+The list endpoint accepts `search`, `sortBy`, and `sortDirection` query parameters. Supported
+sort fields are `name`, `price`, `stock`, and `createdAtUtc`; the default is newest first.
+
+```text
+GET /api/products?search=keyboard&sortBy=price&sortDirection=asc
 ```
 
 ## Angular model and service
@@ -163,7 +170,7 @@ addresses, `http://localhost:4200` and `http://127.0.0.1:4200`.
 ## Useful backend concepts
 
 - **Model:** the object stored in the database.
-- **Request contract:** the JSON fields the client is allowed to send.
+- **DTO:** the JSON fields transferred between the client and API.
 - **Controller:** translates HTTP requests into application actions.
 - **DbContext:** Entity Framework's session for querying and changing data.
 - **Migration:** a version-controlled description of a database schema change.

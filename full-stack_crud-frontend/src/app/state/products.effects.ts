@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, concatMap, map, mergeMap, of, switchMap } from 'rxjs';
+import { catchError, concat, concatMap, debounceTime, map, mergeMap, of, switchMap } from 'rxjs';
 
 import { ProductService } from '../services/product.service';
 import { ProductActions } from './products.actions';
@@ -20,12 +20,13 @@ export class ProductEffects {
   readonly loadProducts$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ProductActions.loadProducts),
-      switchMap(() =>
-        this.productService.getAll().pipe(
-          map((products) => ProductActions.loadProductsSuccess({ products })),
-          catchError((error: unknown) =>
-            of(ProductActions.loadProductsFailure({ error: getErrorMessage(error) })),
-          ),
+      debounceTime(250),
+      switchMap(({ search }) => this.productService.getAll(search)),
+      map((products) => ProductActions.loadProductsSuccess({ products })),
+      catchError((error: unknown, effect$) =>
+        concat(
+          of(ProductActions.loadProductsFailure({ error: getErrorMessage(error) })),
+          effect$,
         ),
       ),
     ),
@@ -34,12 +35,12 @@ export class ProductEffects {
   readonly createProduct$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ProductActions.createProduct),
-      concatMap(({ product }) =>
-        this.productService.create(product).pipe(
-          map((createdProduct) => ProductActions.createProductSuccess({ product: createdProduct })),
-          catchError((error: unknown) =>
-            of(ProductActions.createProductFailure({ error: getErrorMessage(error) })),
-          ),
+      concatMap(({ product }) => this.productService.create(product)),
+      map((product) => ProductActions.createProductSuccess({ product })),
+      catchError((error: unknown, effect$) =>
+        concat(
+          of(ProductActions.createProductFailure({ error: getErrorMessage(error) })),
+          effect$,
         ),
       ),
     ),
@@ -49,11 +50,14 @@ export class ProductEffects {
     this.actions$.pipe(
       ofType(ProductActions.updateProduct),
       concatMap(({ id, product }) =>
-        this.productService.update(id, product).pipe(
-          map(() => ProductActions.updateProductSuccess({ id, product })),
-          catchError((error: unknown) =>
-            of(ProductActions.updateProductFailure({ error: getErrorMessage(error) })),
-          ),
+        this.productService
+          .update(id, product)
+          .pipe(map(() => ProductActions.updateProductSuccess({ id, product }))),
+      ),
+      catchError((error: unknown, effect$) =>
+        concat(
+          of(ProductActions.updateProductFailure({ error: getErrorMessage(error) })),
+          effect$,
         ),
       ),
     ),
@@ -63,11 +67,12 @@ export class ProductEffects {
     this.actions$.pipe(
       ofType(ProductActions.deleteProduct),
       mergeMap(({ id }) =>
-        this.productService.delete(id).pipe(
-          map(() => ProductActions.deleteProductSuccess({ id })),
-          catchError((error: unknown) =>
-            of(ProductActions.deleteProductFailure({ error: getErrorMessage(error) })),
-          ),
+        this.productService.delete(id).pipe(map(() => ProductActions.deleteProductSuccess({ id }))),
+      ),
+      catchError((error: unknown, effect$) =>
+        concat(
+          of(ProductActions.deleteProductFailure({ error: getErrorMessage(error) })),
+          effect$,
         ),
       ),
     ),
