@@ -11,6 +11,21 @@ namespace ProductApi.Controllers;
 public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
 {
     private const int MaxPageSize = 100;
+    private static readonly HashSet<string> SupportedSortFields =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "name",
+            "price",
+            "stock",
+            "createdAtUtc"
+        };
+
+    private static readonly HashSet<string> SupportedSortDirections =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "asc",
+            "desc"
+        };
     
     [HttpGet]
     [ProducesResponseType<PagedResponseDto<ProductResponseDto>>(StatusCodes.Status200OK)]
@@ -19,10 +34,13 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         string? search = null,
         int page = 1,
         int pageSize = 10,
-        string sortBy = "createdAtUtc",
-        string sortDirection = "desc",
+        string? sortBy = "createdAtUtc",
+        string? sortDirection = "desc",
         CancellationToken cancellationToken = default)
     {
+        var normalizedSortBy = sortBy?.Trim() ?? string.Empty;
+        var normalizedSortDirection = sortDirection?.Trim() ?? string.Empty;
+
         if (page < 1)
         {
             ModelState.AddModelError(nameof(page), "Page must be at least 1.");
@@ -35,6 +53,20 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
                 $"Page size must be between 1 and {MaxPageSize}.");
         }
 
+        if (!SupportedSortFields.Contains(normalizedSortBy))
+        {
+            ModelState.AddModelError(
+                nameof(sortBy),
+                "Sort by must be one of: name, price, stock, createdAtUtc.");
+        }
+
+        if (!SupportedSortDirections.Contains(normalizedSortDirection))
+        {
+            ModelState.AddModelError(
+                nameof(sortDirection),
+                "Sort direction must be either asc or desc.");
+        }
+
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
@@ -44,18 +76,22 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var pattern = $"%{search.Trim()}%";
+            var normalizedSearch = search.Trim().ToLowerInvariant();
 
             query = query.Where(product =>
-                EF.Functions.ILike(product.Name, pattern) ||
-                product.Description != null && EF.Functions.ILike(product.Description, pattern));
+                product.Name.ToLower().Contains(normalizedSearch) ||
+                product.Description != null &&
+                product.Description.ToLower().Contains(normalizedSearch));
         }
         
         var totalItems = await query.CountAsync(cancellationToken);
 
-        var descending = !string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
+        var descending = string.Equals(
+            normalizedSortDirection,
+            "desc",
+            StringComparison.OrdinalIgnoreCase);
 
-        query = sortBy.ToLowerInvariant() switch
+        query = normalizedSortBy.ToLowerInvariant() switch
         {
             "name" => descending
                 ? query.OrderByDescending(product => product.Name)
@@ -74,11 +110,12 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
                     .ThenByDescending(product => product.Id)
                 : query.OrderBy(product => product.Stock)
                     .ThenBy(product => product.Id),
-            _ => descending
+            "createdatutc" => descending
                 ? query.OrderByDescending(product => product.CreatedAtUtc)
                     .ThenByDescending(product => product.Id)
                 : query.OrderBy(product => product.CreatedAtUtc)
-                    .ThenBy(product => product.Id)
+                    .ThenBy(product => product.Id),
+            _ => throw new InvalidOperationException("Sorting was not validated.")
         };
 
 

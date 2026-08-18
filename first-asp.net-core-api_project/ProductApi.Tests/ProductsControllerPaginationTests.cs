@@ -105,4 +105,77 @@ public sealed class ProductsControllerPaginationTests
         Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
         Assert.Contains(expectedErrorKey, problem.Errors.Keys);
     }
+
+    [Theory]
+    [InlineData("unknown", "asc", "sortBy")]
+    [InlineData("", "asc", "sortBy")]
+    [InlineData(null, "asc", "sortBy")]
+    [InlineData("name", "ascending", "sortDirection")]
+    [InlineData("name", "   ", "sortDirection")]
+    [InlineData("name", null, "sortDirection")]
+    public async Task GetAll_WithInvalidSorting_ReturnsValidationProblem(
+        string? sortBy,
+        string? sortDirection,
+        string expectedErrorKey)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var dbContext = new AppDbContext(options);
+
+        using var serviceProvider = new ServiceCollection()
+            .AddLogging()
+            .AddControllers()
+            .Services
+            .BuildServiceProvider();
+
+        var controller = new ProductsController(dbContext)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestServices = serviceProvider
+                }
+            }
+        };
+
+        var result = await controller.GetAll(
+            sortBy: sortBy,
+            sortDirection: sortDirection);
+
+        var objectResult = Assert.IsAssignableFrom<ObjectResult>(result.Result);
+        var problem = Assert.IsType<ValidationProblemDetails>(objectResult.Value);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
+        Assert.Contains(expectedErrorKey, problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task GetAll_NormalizesSortingBeforeValidationAndQuerying()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var dbContext = new AppDbContext(options);
+
+        dbContext.Products.AddRange(
+            CreateProduct(1, "Alpha"),
+            CreateProduct(2, "Beta"));
+
+        await dbContext.SaveChangesAsync();
+
+        var controller = new ProductsController(dbContext);
+
+        var result = await controller.GetAll(
+            sortBy: " NAME ",
+            sortDirection: " DESC ");
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<PagedResponseDto<ProductResponseDto>>(okResult.Value);
+
+        Assert.Equal([2, 1], response.Items.Select(product => product.Id));
+    }
 }

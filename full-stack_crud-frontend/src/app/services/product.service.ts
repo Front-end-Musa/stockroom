@@ -2,13 +2,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { ProductRequest } from '../contracts/product-request';
+import { environment } from '../../environments/environment';
 import { Product } from '../models/product';
 import { PagedResponse } from '../models/paged-response.interface';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:5135/api/products';
+  private readonly apiUrl = `${environment.apiUrl}/products`;
 
   getAll(search: string, sortBy = 'createdAtUtc', sortDirection: 'asc' | 'desc' = 'desc', page = 1, pageSize = 10) {
     let params = new HttpParams().set('sortBy', sortBy).set('sortDirection', sortDirection).set('page', page).set('pageSize', pageSize);

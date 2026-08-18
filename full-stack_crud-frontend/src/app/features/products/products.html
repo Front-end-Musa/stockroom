@@ -241,7 +241,62 @@
         }
 
         <footer class="catalog-footer">
-          Showing {{ products().length }} {{ search() ? 'matching ' : '' }}products
+          <p class="result-count" aria-live="polite">
+            @if (totalItems() > 0) {
+              Showing {{ (page() - 1) * pageSize() + 1 }}–{{
+                (page() - 1) * pageSize() + products().length
+              }}
+              of {{ totalItems() }} {{ search() ? 'matching ' : '' }}products
+            } @else {
+              No {{ search() ? 'matching ' : '' }}products
+            }
+          </p>
+
+          <nav class="pagination" aria-label="Product pagination">
+            <label class="page-size-control">
+              <span>Rows per page</span>
+              <select
+                #pageSizeSelect
+                [value]="pageSize()"
+                [disabled]="loading()"
+                (change)="changePageSize(pageSizeSelect.value)"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+
+            <span class="pagination-summary" aria-live="polite">
+              Page {{ totalPages() > 0 ? page() : 0 }} of {{ totalPages() }}
+            </span>
+
+            <div class="pagination-buttons">
+              <button
+                type="button"
+                aria-label="Go to previous page"
+                [disabled]="!hasPreviousPage() || loading()"
+                (click)="goToPreviousPage()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                <span>Previous</span>
+              </button>
+              <button
+                type="button"
+                aria-label="Go to next page"
+                [disabled]="!hasNextPage() || loading()"
+                (click)="goToNextPage()"
+              >
+                <span>Next</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </nav>
         </footer>
       </section>
 
