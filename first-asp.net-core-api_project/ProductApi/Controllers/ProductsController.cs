@@ -10,14 +10,36 @@ namespace ProductApi.Controllers;
 [Route("api/products")]
 public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
 {
+    private const int MaxPageSize = 100;
+    
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ProductResponseDto>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<ProductResponseDto>>> GetAll(
-        string? search,
+    [ProducesResponseType<PagedResponseDto<ProductResponseDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedResponseDto<ProductResponseDto>>> GetAll(
+        string? search = null,
+        int page = 1,
+        int pageSize = 10,
         string sortBy = "createdAtUtc",
         string sortDirection = "desc",
         CancellationToken cancellationToken = default)
     {
+        if (page < 1)
+        {
+            ModelState.AddModelError(nameof(page), "Page must be at least 1.");
+        }
+
+        if (pageSize < 1 || pageSize > MaxPageSize)
+        {
+            ModelState.AddModelError(
+                nameof(pageSize),
+                $"Page size must be between 1 and {MaxPageSize}.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
         var query = dbContext.Products.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -28,6 +50,8 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
                 EF.Functions.ILike(product.Name, pattern) ||
                 product.Description != null && EF.Functions.ILike(product.Description, pattern));
         }
+        
+        var totalItems = await query.CountAsync(cancellationToken);
 
         var descending = !string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase);
 
@@ -35,13 +59,21 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         {
             "name" => descending
                 ? query.OrderByDescending(product => product.Name)
-                : query.OrderBy(product => product.Name),
+                    .ThenByDescending(product => product.Id)
+                : query.OrderBy(product => product.Name)
+                    .ThenBy(product => product.Id),
+
             "price" => descending
                 ? query.OrderByDescending(product => product.Price)
-                : query.OrderBy(product => product.Price),
+                    .ThenByDescending(product => product.Id)
+                : query.OrderBy(product => product.Price)
+                    .ThenBy(product => product.Id),
+
             "stock" => descending
                 ? query.OrderByDescending(product => product.Stock)
-                : query.OrderBy(product => product.Stock),
+                    .ThenByDescending(product => product.Id)
+                : query.OrderBy(product => product.Stock)
+                    .ThenBy(product => product.Id),
             _ => descending
                 ? query.OrderByDescending(product => product.CreatedAtUtc)
                     .ThenByDescending(product => product.Id)
@@ -49,9 +81,23 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
                     .ThenBy(product => product.Id)
         };
 
-        var products = await query.Select(ProductMappings.ToResponseProjection).ToListAsync(cancellationToken);
 
-        return Ok(products);
+        var products = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(ProductMappings.ToResponseProjection)
+            .ToListAsync(cancellationToken);
+
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+        var response = new PagedResponseDto<ProductResponseDto>(
+            products,
+            page,
+            pageSize,
+            totalItems,
+            totalPages);
+
+        return Ok(response);
     }
 
     [HttpGet("{id}")]

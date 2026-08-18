@@ -21,8 +21,8 @@ export class ProductEffects {
     this.actions$.pipe(
       ofType(ProductActions.loadProducts),
       debounceTime(250),
-      switchMap(({ search }) => this.productService.getAll(search)),
-      map((products) => ProductActions.loadProductsSuccess({ products })),
+      switchMap(({ search, page, pageSize }) => this.productService.getAll(search, 'createdAtUtc', 'desc', page, pageSize)),
+      map((response) => ProductActions.loadProductsSuccess({ data: response })),
       catchError((error: unknown, effect$) =>
         concat(
           of(ProductActions.loadProductsFailure({ error: getErrorMessage(error) })),

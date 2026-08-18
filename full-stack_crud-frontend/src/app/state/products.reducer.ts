@@ -2,9 +2,17 @@ import { createReducer, on } from '@ngrx/store';
 
 import { Product } from '../models/product';
 import { ProductActions } from './products.actions';
+import { PagedResponse } from '../models/paged-response.interface';
 
 export interface ProductsState {
   products: Product[];
+  data: PagedResponse<Product> | null;
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
   loading: boolean;
   apiConnected: boolean | null;
   saving: boolean;
@@ -14,6 +22,13 @@ export interface ProductsState {
 
 export const initialProductsState: ProductsState = {
   products: [],
+  data: null,
+  page: 1,
+  pageSize: 10,
+  totalItems: 0,
+  totalPages: 0,
+  hasPreviousPage: false,
+  hasNextPage: false,
   loading: false,
   apiConnected: null,
   saving: false,
@@ -28,9 +43,16 @@ export const productsReducer = createReducer(
     loading: true,
     error: null,
   })),
-  on(ProductActions.loadProductsSuccess, (state, { products }) => ({
+  on(ProductActions.loadProductsSuccess, (state, { data }) => ({
     ...state,
-    products,
+    products: data.items,
+    data,
+    page: data.page,
+    pageSize: data.pageSize,
+    totalItems: data.totalItems,
+    totalPages: data.totalPages,
+    hasPreviousPage: data.hasPreviousPage,
+    hasNextPage: data.hasNextPage,
     loading: false,
     apiConnected: true,
   })),

@@ -34,3 +34,22 @@ export const selectLowStockCount = createSelector(
 export const selectInventoryValue = createSelector(selectProducts, (products) =>
   products.reduce((total, product) => total + product.price * product.stock, 0),
 );
+
+// Pagination selectors
+export const selectCurrentPage = createSelector(selectProductsState, (state) => state.page);
+
+export const selectPageSize = createSelector(selectProductsState, (state) => state.pageSize);
+
+export const selectTotalItems = createSelector(selectProductsState, (state) => state.totalItems);
+
+export const selectTotalPages = createSelector(selectProductsState, (state) => state.totalPages);
+
+export const selectHasPreviousPage = createSelector(
+  selectProductsState,
+  (state) => state.hasPreviousPage,
+);
+
+export const selectHasNextPage = createSelector(
+  selectProductsState,
+  (state) => state.hasNextPage,
+);

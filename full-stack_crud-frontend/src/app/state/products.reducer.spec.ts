@@ -1,4 +1,5 @@
 import { Product } from '../models/product';
+import { PagedResponse } from '../models/paged-response.interface';
 import { ProductActions } from './products.actions';
 import { initialProductsState, productsReducer } from './products.reducer';
 
@@ -13,12 +14,27 @@ const product: Product = {
 
 describe('productsReducer', () => {
   it('should load products and mark the API as connected', () => {
+    const data: PagedResponse<Product> = {
+      items: [product],
+      page: 2,
+      pageSize: 10,
+      totalItems: 11,
+      totalPages: 2,
+      hasPreviousPage: true,
+      hasNextPage: false,
+    };
     const state = productsReducer(
       { ...initialProductsState, loading: true },
-      ProductActions.loadProductsSuccess({ products: [product] }),
+      ProductActions.loadProductsSuccess({ data }),
     );
 
     expect(state.products).toEqual([product]);
+    expect(state.page).toBe(2);
+    expect(state.pageSize).toBe(10);
+    expect(state.totalItems).toBe(11);
+    expect(state.totalPages).toBe(2);
+    expect(state.hasPreviousPage).toBe(true);
+    expect(state.hasNextPage).toBe(false);
     expect(state.loading).toBe(false);
     expect(state.apiConnected).toBe(true);
   });

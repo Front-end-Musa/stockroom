@@ -2,12 +2,17 @@ import { createActionGroup, emptyProps, props } from '@ngrx/store';
 
 import { ProductRequest } from '../contracts/product-request';
 import { Product } from '../models/product';
+import { PagedResponse } from '../models/paged-response.interface';
 
 export const ProductActions = createActionGroup({
   source: 'Products',
   events: {
-    'Load Products': props<{ search: string }>(),
-    'Load Products Success': props<{ products: Product[] }>(),
+    'Load Products': props<{
+      search: string;
+      page: number;
+      pageSize: number;
+    }>(),
+    'Load Products Success': props<{ data: PagedResponse<Product> }>(),
     'Load Products Failure': props<{ error: string }>(),
     'Create Product': props<{ product: ProductRequest }>(),
     'Create Product Success': props<{ product: Product }>(),

@@ -1,24 +1,19 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, Signal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { Actions, ofType } from '@ngrx/effects';
-import { Store } from '@ngrx/store';
 
 import { ProductRequest } from '../../contracts/product-request';
 import { Product } from '../../models/product';
 import { ProductActions } from '../../state/products.actions';
-import {
-  selectApiConnected,
-  selectDeletingProductId,
-  selectInventoryValue,
-  selectLowStockCount,
-  selectProductSaving,
-  selectProducts,
-  selectProductsError,
-  selectProductsLoading,
-  selectUnitsInStock,
-} from '../../state/products.selectors';
+import { ProductsFacade } from '../../state/products.facade';
 
 @Component({
   selector: 'app-products',
@@ -38,6 +33,12 @@ export class Products implements OnInit {
   protected readonly unitsInStock: Signal<number>;
   protected readonly lowStockCount: Signal<number>;
   protected readonly inventoryValue: Signal<number>;
+  protected readonly page: Signal<number>;
+  protected readonly pageSize: Signal<number>;
+  protected readonly totalItems: Signal<number>;
+  protected readonly totalPages: Signal<number>;
+  protected readonly hasPreviousPage: Signal<boolean>;
+  protected readonly hasNextPage: Signal<boolean>;
 
   protected readonly search = signal('');
   protected readonly editingProduct = signal<Product | null>(null);
@@ -52,20 +53,26 @@ export class Products implements OnInit {
   }>;
 
   constructor(
-    private readonly store: Store,
+    private readonly productsFacade: ProductsFacade,
     actions$: Actions,
     destroyRef: DestroyRef,
     formBuilder: FormBuilder,
   ) {
-    this.products = store.selectSignal(selectProducts);
-    this.loading = store.selectSignal(selectProductsLoading);
-    this.apiConnected = store.selectSignal(selectApiConnected);
-    this.saving = store.selectSignal(selectProductSaving);
-    this.deletingId = store.selectSignal(selectDeletingProductId);
-    this.error = store.selectSignal(selectProductsError);
-    this.unitsInStock = store.selectSignal(selectUnitsInStock);
-    this.lowStockCount = store.selectSignal(selectLowStockCount);
-    this.inventoryValue = store.selectSignal(selectInventoryValue);
+    this.products = productsFacade.products;
+    this.loading = productsFacade.loading;
+    this.apiConnected = productsFacade.apiConnected;
+    this.saving = productsFacade.saving;
+    this.deletingId = productsFacade.deletingId;
+    this.error = productsFacade.error;
+    this.unitsInStock = productsFacade.unitsInStock;
+    this.lowStockCount = productsFacade.lowStockCount;
+    this.inventoryValue = productsFacade.inventoryValue;
+    this.page = productsFacade.page;
+    this.pageSize = productsFacade.pageSize;
+    this.totalItems = productsFacade.totalItems;
+    this.totalPages = productsFacade.totalPages;
+    this.hasPreviousPage = productsFacade.hasPreviousPage;
+    this.hasNextPage = productsFacade.hasNextPage;
     this.productForm = formBuilder.nonNullable.group({
       name: [
         '',
@@ -86,7 +93,7 @@ export class Products implements OnInit {
       .subscribe(({ product }) => {
         this.resetForm();
         this.showToast(`${product.name} was added to the catalog.`);
-        this.loadProducts();
+        this.loadProducts(1);
       });
 
     actions$
@@ -102,7 +109,10 @@ export class Products implements OnInit {
       .subscribe(() => {
         this.productToDelete.set(null);
         this.showToast('Product removed from the catalog.');
-        this.loadProducts();
+        const targetPage =
+          this.products().length === 0 && this.page() > 1 ? this.page() - 1 : this.page();
+
+        this.loadProducts(targetPage);
       });
 
     destroyRef.onDestroy(() => {
@@ -129,14 +139,14 @@ export class Products implements OnInit {
       price: product.price,
       stock: product.stock,
     });
-    this.store.dispatch(ProductActions.dismissError());
+    this.productsFacade.dismissError();
     formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   protected resetForm() {
     this.editingProduct.set(null);
     this.productForm.reset({ name: '', description: '', price: 0, stock: 0 });
-    this.store.dispatch(ProductActions.dismissError());
+    this.productsFacade.dismissError();
   }
 
   protected submit() {
@@ -155,11 +165,11 @@ export class Products implements OnInit {
     const existingProduct = this.editingProduct();
 
     if (existingProduct) {
-      this.store.dispatch(ProductActions.updateProduct({ id: existingProduct.id, product }));
+      this.productsFacade.updateProduct(existingProduct.id, product);
       return;
     }
 
-    this.store.dispatch(ProductActions.createProduct({ product }));
+    this.productsFacade.createProduct(product);
   }
 
   protected askToDelete(product: Product) {
@@ -176,7 +186,7 @@ export class Products implements OnInit {
     const product = this.productToDelete();
 
     if (product) {
-      this.store.dispatch(ProductActions.deleteProduct({ id: product.id }));
+      this.productsFacade.deleteProduct(product.id);
     }
   }
 
@@ -185,17 +195,44 @@ export class Products implements OnInit {
   }
 
   protected dismissError() {
-    this.store.dispatch(ProductActions.dismissError());
+    this.productsFacade.dismissError();
   }
 
   protected searchProducts(value: string) {
     this.search.set(value);
-    this.loadProducts();
+    this.loadProducts(1);
   }
 
   protected clearSearch() {
     this.search.set('');
-    this.loadProducts();
+    this.loadProducts(1);
+  }
+
+  protected goToPreviousPage() {
+    if (this.hasPreviousPage() && !this.loading()) {
+      this.loadProducts(this.page() - 1);
+    }
+  }
+
+  protected goToNextPage() {
+    if (this.hasNextPage() && !this.loading()) {
+      this.loadProducts(this.page() + 1);
+    }
+  }
+
+  protected changePageSize(value: string | number) {
+    const pageSize = Number(value);
+
+    if (
+      !Number.isInteger(pageSize) ||
+      pageSize < 1 ||
+      pageSize > 100 ||
+      pageSize === this.pageSize()
+    ) {
+      return;
+    }
+
+    this.loadProducts(1, pageSize);
   }
 
   protected productInitial(product: Product) {
@@ -211,7 +248,7 @@ export class Products implements OnInit {
     this.toastTimer = setTimeout(() => this.toast.set(null), 3500);
   }
 
-  private loadProducts() {
-    this.store.dispatch(ProductActions.loadProducts({ search: this.search() }));
+  private loadProducts(page = this.page(), pageSize = this.pageSize()) {
+    this.productsFacade.loadProducts(this.search(), page, pageSize);
   }
 }
