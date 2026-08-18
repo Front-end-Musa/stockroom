@@ -1,0 +1,71 @@
+{
+  "title": "Choose Stockroom's new visual world",
+  "question": "Pick a durable operating-system for the catalog, or re-roll for another set.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Tabbed Reference Manual",
+      "kicker": "THE ROLL",
+      "lineage": "boxed-software reference manuals and acetate overlays",
+      "thesis": "A living stock ledger where operational detail sits on clear, precisely indexed leaves.",
+      "palette": ["#f4e9cb", "#f0a72f", "#163e58", "#d9513f"],
+      "materials": ["translucent acetate", "colored divider boards", "punched binding"],
+      "viewport": "An indexed ledger opens directly on the catalog, with health metrics printed into a tabbed divider rail.",
+      "risk": "Needs restraint to remain fast to scan during dense product work.",
+      "raised": [{"from": "Emission-line rail", "raise": "Inventory health is also encoded in consistent line forms, not color alone."}],
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "Design Annual Plate",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "editorial annuals and production registration sheets",
+      "thesis": "A calm, highly legible inventory desk built from measured grids and printing-room precision.",
+      "palette": ["#f5f4f6", "#16181a", "#dcdDF3", "#c9c7c4"],
+      "materials": ["uncoated paper", "registration marks", "hairline rules"],
+      "viewport": "A single continuous inventory sheet makes product status and action controls feel intentionally composed.",
+      "risk": "Its editorial clarity is familiar for polished modern workspaces.",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-oscilloscope",
+      "label": "Signal Bench",
+      "verdict": "competitive",
+      "lineage": "CRT oscilloscopes and calibrated signal benches",
+      "thesis": "Stock becomes a signal: states are visible immediately against a strict instrument grid.",
+      "palette": ["#101714", "#8ef0a2", "#777f78", "#e0ae42"],
+      "materials": ["etched graticule", "phosphor trace", "instrument readouts"],
+      "viewport": "A live health panel anchors the table and turns stock thresholds into measured, readable signals.",
+      "case": "Strong for stock health; less direct for editing dense product details.",
+      "risk": "Can tip into novelty if the catalog stops reading like a practical workspace.",
+      "comp": ".impeccable/mocks/decision/challenger-oscilloscope.png"
+    },
+    {
+      "id": "challenger-streetwear",
+      "label": "Industrial Quote Grammar",
+      "verdict": "declined",
+      "lineage": "industrial streetwear labels and stockroom tagging",
+      "thesis": "A strict black-and-white operating floor punctuated by safety-orange product tags.",
+      "palette": ["#f8f7f1", "#151515", "#f05b2d", "#8b8b86"],
+      "materials": ["nylon labels", "hazard diagonals", "zip-tie tags"],
+      "viewport": "The catalog becomes a labeled work surface with bold literal zones and an orange active state.",
+      "case": "Identifies with a stockroom, but loses product clarity to its styling.",
+      "kept": "Literal, unmistakable wayfinding.",
+      "risk": "Can become louder than an all-day product-management tool.",
+      "comp": ".impeccable/mocks/decision/challenger-streetwear.png"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": true},
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A clean contemporary inventory dashboard, executed with care.",
+    "palette": ["#ffffff", "#111827", "#2563eb"],
+    "materials": ["clean grid", "quiet cards"],
+    "viewport": "A familiar dashboard structure with all essential catalog controls above the fold.",
+    "risk": "Indistinguishable from other SaaS tools by design.",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

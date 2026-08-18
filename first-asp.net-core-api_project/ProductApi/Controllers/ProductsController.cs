@@ -1,32 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ProductApi.Data;
 using ProductApi.Dtos;
-using ProductApi.Models;
+using ProductApi.Services;
 
 namespace ProductApi.Controllers;
 
 [ApiController]
 [Route("api/products")]
-public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
+public sealed class ProductsController(IProductService productService) : ControllerBase
 {
-    private const int MaxPageSize = 100;
-    private static readonly HashSet<string> SupportedSortFields =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "name",
-            "price",
-            "stock",
-            "createdAtUtc"
-        };
-
-    private static readonly HashSet<string> SupportedSortDirections =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "asc",
-            "desc"
-        };
-    
     [HttpGet]
     [ProducesResponseType<PagedResponseDto<ProductResponseDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -38,103 +19,28 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         string? sortDirection = "desc",
         CancellationToken cancellationToken = default)
     {
-        var normalizedSortBy = sortBy?.Trim() ?? string.Empty;
-        var normalizedSortDirection = sortDirection?.Trim() ?? string.Empty;
+        var result = await productService.GetAllAsync(
+            search,
+            page,
+            pageSize,
+            sortBy,
+            sortDirection,
+            cancellationToken);
 
-        if (page < 1)
+        if (!result.IsValid)
         {
-            ModelState.AddModelError(nameof(page), "Page must be at least 1.");
-        }
+            foreach (var (field, messages) in result.Errors)
+            {
+                foreach (var message in messages)
+                {
+                    ModelState.AddModelError(field, message);
+                }
+            }
 
-        if (pageSize < 1 || pageSize > MaxPageSize)
-        {
-            ModelState.AddModelError(
-                nameof(pageSize),
-                $"Page size must be between 1 and {MaxPageSize}.");
-        }
-
-        if (!SupportedSortFields.Contains(normalizedSortBy))
-        {
-            ModelState.AddModelError(
-                nameof(sortBy),
-                "Sort by must be one of: name, price, stock, createdAtUtc.");
-        }
-
-        if (!SupportedSortDirections.Contains(normalizedSortDirection))
-        {
-            ModelState.AddModelError(
-                nameof(sortDirection),
-                "Sort direction must be either asc or desc.");
-        }
-
-        if (!ModelState.IsValid)
-        {
             return ValidationProblem(ModelState);
         }
 
-        var query = dbContext.Products.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var normalizedSearch = search.Trim().ToLowerInvariant();
-
-            query = query.Where(product =>
-                product.Name.ToLower().Contains(normalizedSearch) ||
-                product.Description != null &&
-                product.Description.ToLower().Contains(normalizedSearch));
-        }
-        
-        var totalItems = await query.CountAsync(cancellationToken);
-
-        var descending = string.Equals(
-            normalizedSortDirection,
-            "desc",
-            StringComparison.OrdinalIgnoreCase);
-
-        query = normalizedSortBy.ToLowerInvariant() switch
-        {
-            "name" => descending
-                ? query.OrderByDescending(product => product.Name)
-                    .ThenByDescending(product => product.Id)
-                : query.OrderBy(product => product.Name)
-                    .ThenBy(product => product.Id),
-
-            "price" => descending
-                ? query.OrderByDescending(product => product.Price)
-                    .ThenByDescending(product => product.Id)
-                : query.OrderBy(product => product.Price)
-                    .ThenBy(product => product.Id),
-
-            "stock" => descending
-                ? query.OrderByDescending(product => product.Stock)
-                    .ThenByDescending(product => product.Id)
-                : query.OrderBy(product => product.Stock)
-                    .ThenBy(product => product.Id),
-            "createdatutc" => descending
-                ? query.OrderByDescending(product => product.CreatedAtUtc)
-                    .ThenByDescending(product => product.Id)
-                : query.OrderBy(product => product.CreatedAtUtc)
-                    .ThenBy(product => product.Id),
-            _ => throw new InvalidOperationException("Sorting was not validated.")
-        };
-
-
-        var products = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(ProductMappings.ToResponseProjection)
-            .ToListAsync(cancellationToken);
-
-        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-
-        var response = new PagedResponseDto<ProductResponseDto>(
-            products,
-            page,
-            pageSize,
-            totalItems,
-            totalPages);
-
-        return Ok(response);
+        return Ok(result.Response);
     }
 
     [HttpGet("{id}")]
@@ -142,11 +48,7 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProductResponseDto>> GetById(int id, CancellationToken cancellationToken)
     {
-        var product = await dbContext.Products
-            .AsNoTracking()
-            .Where(product => product.Id == id)
-            .Select(ProductMappings.ToResponseProjection)
-            .FirstOrDefaultAsync(cancellationToken);
+        var product = await productService.GetByIdAsync(id, cancellationToken);
 
         return product is null ? NotFound() : Ok(product);
     }
@@ -158,20 +60,9 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         ProductRequestDto request,
         CancellationToken cancellationToken)
     {
-        var product = new Product
-        {
-            Name = request.Name,
-            Description = request.Description,
-            Price = request.Price,
-            Stock = request.Stock
-        };
+        var response = await productService.CreateAsync(request, cancellationToken);
 
-        dbContext.Products.Add(product);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        var response = product.ToResponseDto();
-
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, response);
+        return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
     [HttpPut("{id}")]
@@ -183,19 +74,10 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         ProductRequestDto request,
         CancellationToken cancellationToken)
     {
-        var product = await dbContext.Products.FindAsync([id], cancellationToken);
-
-        if (product is null)
+        if (!await productService.UpdateAsync(id, request, cancellationToken))
         {
             return NotFound();
         }
-
-        product.Name = request.Name;
-        product.Description = request.Description;
-        product.Price = request.Price;
-        product.Stock = request.Stock;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         return NoContent();
     }
@@ -205,15 +87,10 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        var product = await dbContext.Products.FindAsync([id], cancellationToken);
-
-        if (product is null)
+        if (!await productService.DeleteAsync(id, cancellationToken))
         {
             return NotFound();
         }
-
-        dbContext.Products.Remove(product);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         return NoContent();
     }

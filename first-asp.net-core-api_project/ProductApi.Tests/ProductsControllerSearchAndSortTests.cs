@@ -4,6 +4,7 @@ using ProductApi.Controllers;
 using ProductApi.Data;
 using ProductApi.Dtos;
 using ProductApi.Models;
+using ProductApi.Services;
 
 namespace ProductApi.Tests;
 
@@ -33,7 +34,7 @@ public sealed class ProductsControllerSearchAndSortTests
 
         await dbContext.SaveChangesAsync();
 
-        var controller = new ProductsController(dbContext);
+        var controller = new ProductsController(new ProductService(dbContext));
 
         var result = await controller.GetAll(
             search: "  keyboard  ",
@@ -61,7 +62,7 @@ public sealed class ProductsControllerSearchAndSortTests
 
         await dbContext.SaveChangesAsync();
 
-        var controller = new ProductsController(dbContext);
+        var controller = new ProductsController(new ProductService(dbContext));
 
         var result = await controller.GetAll(
             search: "   ",
@@ -90,7 +91,7 @@ public sealed class ProductsControllerSearchAndSortTests
 
         await dbContext.SaveChangesAsync();
 
-        var controller = new ProductsController(dbContext);
+        var controller = new ProductsController(new ProductService(dbContext));
 
         var result = await controller.GetAll(
             sortBy: sortBy,

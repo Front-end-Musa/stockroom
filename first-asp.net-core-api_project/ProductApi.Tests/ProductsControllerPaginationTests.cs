@@ -6,6 +6,7 @@ using ProductApi.Controllers;
 using ProductApi.Data;
 using ProductApi.Dtos;
 using ProductApi.Models;
+using ProductApi.Services;
 
 namespace ProductApi.Tests;
 
@@ -29,7 +30,7 @@ public sealed class ProductsControllerPaginationTests
 
         await dbContext.SaveChangesAsync();
 
-        var controller = new ProductsController(dbContext);
+        var controller = new ProductsController(new ProductService(dbContext));
 
         var result = await controller.GetAll(
             page: 2,
@@ -83,7 +84,7 @@ public sealed class ProductsControllerPaginationTests
             .Services
             .BuildServiceProvider();
 
-        var controller = new ProductsController(dbContext)
+        var controller = new ProductsController(new ProductService(dbContext))
         {
             ControllerContext = new ControllerContext
             {
@@ -130,7 +131,7 @@ public sealed class ProductsControllerPaginationTests
             .Services
             .BuildServiceProvider();
 
-        var controller = new ProductsController(dbContext)
+        var controller = new ProductsController(new ProductService(dbContext))
         {
             ControllerContext = new ControllerContext
             {
@@ -167,7 +168,7 @@ public sealed class ProductsControllerPaginationTests
 
         await dbContext.SaveChangesAsync();
 
-        var controller = new ProductsController(dbContext);
+        var controller = new ProductsController(new ProductService(dbContext));
 
         var result = await controller.GetAll(
             sortBy: " NAME ",
