@@ -77,8 +77,8 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
     {
         var product = new Product
         {
-            Name = request.Name.Trim(),
-            Description = request.Description?.Trim(),
+            Name = request.Name,
+            Description = request.Description,
             Price = request.Price,
             Stock = request.Stock
         };
@@ -107,8 +107,8 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
             return NotFound();
         }
 
-        product.Name = request.Name.Trim();
-        product.Description = request.Description?.Trim();
+        product.Name = request.Name;
+        product.Description = request.Description;
         product.Price = request.Price;
         product.Stock = request.Stock;
 
