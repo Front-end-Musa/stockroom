@@ -1,7 +1,8 @@
 :root {
   color-scheme: light;
   font-family:
-    Inter,
+    ui-rounded,
+    'Avenir Next',
     ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
@@ -9,16 +10,16 @@
     sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #17211e;
-  --muted: #69736e;
-  --soft: #f5f3ee;
-  --surface: #fffefa;
-  --line: #dfded7;
-  --brand: #24584d;
-  --brand-dark: #173f37;
-  --accent: #e9663a;
-  --danger: #b4423b;
-  --shadow: 0 18px 50px rgb(31 45 40 / 8%);
+  --ink: #342e4b;
+  --muted: #756f88;
+  --soft: #fcf9ff;
+  --surface: #ffffff;
+  --line: #e9e2f2;
+  --brand: #7665d7;
+  --brand-dark: #5f4ebd;
+  --accent: #ee8e9a;
+  --danger: #c65367;
+  --shadow: 0 18px 42px rgb(86 68 134 / 10%);
 }
 
 * {
@@ -35,9 +36,7 @@ body {
   min-height: 100vh;
   margin: 0;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 12% -4%, rgb(233 102 58 / 10%), transparent 28rem),
-    radial-gradient(circle at 95% 10%, rgb(36 88 77 / 9%), transparent 30rem), var(--soft);
+  background: #fcf9ff;
 }
 
 button,
@@ -50,7 +49,26 @@ button {
   color: inherit;
 }
 
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 3px solid rgb(118 101 215 / 62%);
+  outline-offset: 3px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #69736e;
+  opacity: 0.78;
+}
+
 ::selection {
   color: #ffffff;
   background: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
 }

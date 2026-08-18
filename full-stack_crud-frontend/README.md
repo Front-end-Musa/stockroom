@@ -43,6 +43,23 @@ npm start
 Open `http://localhost:4200`. The frontend connects to
 `http://localhost:5135/api/products`.
 
+## Run the production SSR server
+
+The production frontend requests the API at `/api`. Configure the SSR process with the API origin
+so it can forward those requests instead of rendering the Angular application for them:
+
+```powershell
+$env:API_ORIGIN = 'http://localhost:5135'
+$env:NG_ALLOWED_HOSTS = 'localhost,127.0.0.1'
+npm run build
+npm run serve:ssr:full-stack_crud-frontend
+```
+
+In deployment, set `API_ORIGIN` to the internal API origin and `NG_ALLOWED_HOSTS` to the public
+hostnames (comma-separated) in the server environment. Keep the public frontend URL relative
+(`/api`) so it works behind the SSR proxy without embedding an environment-specific API URL in
+the browser bundle.
+
 ## Verification
 
 ```powershell

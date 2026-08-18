@@ -28,8 +28,7 @@
   <main>
     <section class="hero">
       <div>
-        <p class="eyebrow">Inventory overview</p>
-        <h1>Everything you sell,<br />beautifully organized.</h1>
+        <h1>Keep the catalog<br />in working order.</h1>
         <p class="hero-copy">
           Keep product details, pricing, and stock levels current from one focused workspace.
         </p>
@@ -39,7 +38,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
-        New product
+        <span class="add-product-label">New product</span>
       </button>
     </section>
 
@@ -109,7 +108,6 @@
       <section class="catalog-card">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Catalog</p>
             <h2>Your products</h2>
           </div>
 
@@ -312,7 +310,6 @@
             </svg>
           </span>
           <div>
-            <p class="eyebrow">{{ editingProduct() ? 'Editing product' : 'New listing' }}</p>
             <h2>{{ editingProduct() ? 'Update product' : 'Add a product' }}</h2>
           </div>
         </div>
@@ -434,7 +431,6 @@
           <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
         </svg>
       </span>
-      <p class="eyebrow">Remove product</p>
       <h2 id="delete-title">Delete “{{ product.name }}”?</h2>
       <p>This removes the product permanently. This action cannot be undone.</p>
       <div class="modal-actions">

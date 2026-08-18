@@ -88,6 +88,10 @@ function getErrorMessage(error: unknown) {
     return 'The product API is unavailable. Make sure it is running on port 5135.';
   }
 
+  if (error.status >= 200 && error.status < 300) {
+    return 'The server returned an unexpected response. Please try again.';
+  }
+
   const problem = isProblemDetails(error.error) ? error.error : null;
   const validationMessage = problem?.errors
     ? Object.values(problem.errors).flat().at(0)
@@ -97,7 +101,7 @@ function getErrorMessage(error: unknown) {
     problem?.detail ??
     validationMessage ??
     problem?.title ??
-    `The request failed with status ${error.status}.`
+    'The request could not be completed. Please try again.'
   );
 }
 
