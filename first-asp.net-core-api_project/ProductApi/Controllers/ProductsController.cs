@@ -11,8 +11,8 @@ namespace ProductApi.Controllers;
 public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<Product>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<Product>>> GetAll(
+    [ProducesResponseType<IReadOnlyList<ProductResponseDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ProductResponseDto>>> GetAll(
         string? search,
         string sortBy = "createdAtUtc",
         string sortDirection = "desc",
@@ -49,27 +49,29 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
                     .ThenBy(product => product.Id)
         };
 
-        var products = await query.ToListAsync(cancellationToken);
+        var products = await query.Select(ProductMappings.ToResponseProjection).ToListAsync(cancellationToken);
 
         return Ok(products);
     }
 
     [HttpGet("{id}")]
-    [ProducesResponseType<Product>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProductResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Product>> GetById(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductResponseDto>> GetById(int id, CancellationToken cancellationToken)
     {
         var product = await dbContext.Products
             .AsNoTracking()
-            .FirstOrDefaultAsync(product => product.Id == id, cancellationToken);
+            .Where(product => product.Id == id)
+            .Select(ProductMappings.ToResponseProjection)
+            .FirstOrDefaultAsync(cancellationToken);
 
         return product is null ? NotFound() : Ok(product);
     }
 
     [HttpPost]
-    [ProducesResponseType<Product>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProductResponseDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Product>> Create(
+    public async Task<ActionResult<ProductResponseDto>> Create(
         ProductRequestDto request,
         CancellationToken cancellationToken)
     {
@@ -84,7 +86,9 @@ public sealed class ProductsController(AppDbContext dbContext) : ControllerBase
         dbContext.Products.Add(product);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+        var response = product.ToResponseDto();
+
+        return CreatedAtAction(nameof(GetById), new { id = product.Id }, response);
     }
 
     [HttpPut("{id}")]
