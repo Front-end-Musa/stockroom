@@ -60,8 +60,19 @@ dotnet user-secrets init --project ProductApi
 dotnet user-secrets set "Database:Password" 'YOUR_ACTUAL_PASSWORD' --project ProductApi
 ```
 
-The checked-in fallback password is only for local development. Use a secret
-manager for a deployed application.
+`ProductApi/appsettings.json` must never contain the password. The API reads the
+same setting from `Database__Password` in deployed environments. Configure that
+value in the deployment platform's secret store rather than in a tracked file.
+
+For the optional Docker Compose database, create a local environment file and
+set `POSTGRES_PASSWORD` in that untracked file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Do not put API keys, access tokens, or application secrets in Angular source or
+frontend environment files: browser-delivered configuration is public.
 
 ## 2. Create the database table
 
